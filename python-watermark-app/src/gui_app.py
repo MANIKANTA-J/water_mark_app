@@ -8,7 +8,7 @@ class WatermarkApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Image Watermark Application")
-        self.root.geometry("800x700")
+        self.root.geometry("1200x700")  # Wider window for split view
         self.root.configure(bg='#f0f0f0')
         
         # Initialize variables
@@ -22,74 +22,98 @@ class WatermarkApp:
         self.setup_ui()
         
     def setup_ui(self):
-        # Main title
-        title_label = tk.Label(self.root, text="Image Watermark Application", 
-                              font=("Arial", 20, "bold"), bg='#f0f0f0', fg='#333')
+        # Main title (top of window)
+        title_label = tk.Label(
+            self.root, 
+            text="Image Watermark Application", 
+            font=("Arial", 20, "bold"), 
+            bg='#f0f0f0', 
+            fg='#333'
+        )
         title_label.pack(pady=10)
-        
-        # Create main frame
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
-        
+
+        # Create PanedWindow for resizable split view
+        paned_window = tk.PanedWindow(
+            self.root, 
+            orient=tk.HORIZONTAL, 
+            sashrelief=tk.RAISED,
+            sashwidth=8
+        )
+        paned_window.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Left Frame (Controls)
+        left_frame = ttk.Frame(paned_window, width=500)
+        paned_window.add(left_frame, minsize=400)
+
+        # Right Frame (Preview)
+        right_frame = ttk.Frame(paned_window)
+        paned_window.add(right_frame, minsize=400)
+
+        # Setup controls in left frame
+        self.setup_controls(left_frame)
+
+        # Setup preview in right frame
+        self.setup_preview_section(right_frame)
+
+    def setup_controls(self, parent):
         # Image selection section
-        self.setup_image_selection(main_frame)
+        self.setup_image_selection(parent)
         
         # Watermark type selection
-        self.setup_watermark_type(main_frame)
+        self.setup_watermark_type(parent)
         
         # Watermark options
-        self.setup_watermark_options(main_frame)
-        
-        # Preview section
-        self.setup_preview_section(main_frame)
+        self.setup_watermark_options(parent)
         
         # Action buttons
-        self.setup_action_buttons(main_frame)
+        self.setup_action_buttons(parent)
         
         # Progress bar
-        self.progress = ttk.Progressbar(main_frame, mode='determinate')
+        self.progress = ttk.Progressbar(parent, mode='determinate')
         self.progress.pack(fill=tk.X, pady=10)
-        
+
     def setup_image_selection(self, parent):
-        # Image selection frame
         img_frame = ttk.LabelFrame(parent, text="Select Images", padding=10)
         img_frame.pack(fill=tk.X, pady=5)
         
-        # Buttons frame
         btn_frame = ttk.Frame(img_frame)
         btn_frame.pack(fill=tk.X)
         
-        ttk.Button(btn_frame, text="Select Images", 
-                  command=self.select_images).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Clear Selection", 
-                  command=self.clear_images).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Select Images", command=self.select_images).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Clear Selection", command=self.clear_images).pack(side=tk.LEFT, padx=5)
         
-        # Selected images listbox
         self.images_listbox = tk.Listbox(img_frame, height=4)
         self.images_listbox.pack(fill=tk.X, pady=5)
         
-        # Scrollbar for listbox
         scrollbar = ttk.Scrollbar(img_frame, orient=tk.VERTICAL, command=self.images_listbox.yview)
         self.images_listbox.configure(yscrollcommand=scrollbar.set)
-        
+
     def setup_watermark_type(self, parent):
-        # Watermark type frame
         type_frame = ttk.LabelFrame(parent, text="Watermark Type", padding=10)
         type_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Radiobutton(type_frame, text="Text Watermark", 
-                       variable=self.watermark_type, value="text",
-                       command=self.on_watermark_type_change).pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(type_frame, text="Logo Watermark", 
-                       variable=self.watermark_type, value="logo",
-                       command=self.on_watermark_type_change).pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(
+            type_frame, 
+            text="Text Watermark", 
+            variable=self.watermark_type, 
+            value="text",
+            command=self.on_watermark_type_change
+        ).pack(side=tk.LEFT, padx=10)
         
+        ttk.Radiobutton(
+            type_frame, 
+            text="Logo Watermark", 
+            variable=self.watermark_type, 
+            value="logo",
+            command=self.on_watermark_type_change
+        ).pack(side=tk.LEFT, padx=10)
+
     def setup_watermark_options(self, parent):
         # Options frame
         self.options_frame = ttk.LabelFrame(parent, text="Watermark Options", padding=10)
         self.options_frame.pack(fill=tk.X, pady=5)
         
-        # Text options frame
+        # Text options
         self.text_options_frame = ttk.Frame(self.options_frame)
         self.text_options_frame.pack(fill=tk.X)
         
@@ -102,14 +126,20 @@ class WatermarkApp:
         # Font size
         ttk.Label(self.text_options_frame, text="Font Size:").grid(row=1, column=0, sticky=tk.W, padx=5)
         self.font_size_var = tk.IntVar(value=20)
-        font_size_spin = ttk.Spinbox(self.text_options_frame, from_=10, to=100, 
-                                    textvariable=self.font_size_var, width=10)
-        font_size_spin.grid(row=1, column=1, padx=5, pady=2, sticky=tk.W)
+        ttk.Spinbox(
+            self.text_options_frame, 
+            from_=10, 
+            to=100, 
+            textvariable=self.font_size_var, 
+            width=10
+        ).grid(row=1, column=1, padx=5, pady=2, sticky=tk.W)
         
-        # Text color
         ttk.Label(self.text_options_frame, text="Text Color:").grid(row=2, column=0, sticky=tk.W, padx=5)
-        self.color_button = ttk.Button(self.text_options_frame, text="Choose Color", 
-                                      command=self.choose_color)
+        self.color_button = ttk.Button(
+            self.text_options_frame, 
+            text="Choose Color", 
+            command=self.choose_color
+        )
         self.color_button.grid(row=2, column=1, padx=5, pady=2, sticky=tk.W)
         
         # Logo options frame
@@ -118,15 +148,21 @@ class WatermarkApp:
         ttk.Label(self.logo_options_frame, text="Logo File:").grid(row=0, column=0, sticky=tk.W, padx=5)
         self.logo_entry = ttk.Entry(self.logo_options_frame, width=40)
         self.logo_entry.grid(row=0, column=1, padx=5, pady=2)
-        ttk.Button(self.logo_options_frame, text="Browse", 
-                  command=self.select_logo).grid(row=0, column=2, padx=5)
+        ttk.Button(
+            self.logo_options_frame, 
+            text="Browse", 
+            command=self.select_logo
+        ).grid(row=0, column=2, padx=5)
         
-        # Transparency
         ttk.Label(self.logo_options_frame, text="Transparency:").grid(row=1, column=0, sticky=tk.W, padx=5)
         self.transparency_var = tk.IntVar(value=128)
-        transparency_scale = ttk.Scale(self.logo_options_frame, from_=0, to=255, 
-                                     variable=self.transparency_var, orient=tk.HORIZONTAL)
-        transparency_scale.grid(row=1, column=1, padx=5, pady=2, sticky=tk.EW)
+        ttk.Scale(
+            self.logo_options_frame, 
+            from_=0, 
+            to=255, 
+            variable=self.transparency_var, 
+            orient=tk.HORIZONTAL
+        ).grid(row=1, column=1, padx=5, pady=2, sticky=tk.EW)
         
         # Position options (common for both)
         position_frame = ttk.Frame(self.options_frame)
@@ -134,39 +170,62 @@ class WatermarkApp:
         
         ttk.Label(position_frame, text="Position:").pack(side=tk.LEFT, padx=5)
         self.position_var = tk.StringVar(value="bottom-right")
-        positions = [("Top Left", "top-left"), ("Top Right", "top-right"), 
-                    ("Bottom Left", "bottom-left"), ("Bottom Right", "bottom-right"),
-                    ("Center", "center")]
+        positions = [
+            ("Top Left", "top-left"), 
+            ("Top Right", "top-right"), 
+            ("Bottom Left", "bottom-left"), 
+            ("Bottom Right", "bottom-right"),
+            ("Center", "center")
+        ]
         
         for text, value in positions:
-            ttk.Radiobutton(position_frame, text=text, variable=self.position_var, 
-                           value=value).pack(side=tk.LEFT, padx=5)
+            ttk.Radiobutton(
+                position_frame, 
+                text=text, 
+                variable=self.position_var, 
+                value=value
+            ).pack(side=tk.LEFT, padx=5)
         
-        # Initially show text options
         self.on_watermark_type_change()
-        
+
     def setup_preview_section(self, parent):
-        # Preview frame
         preview_frame = ttk.LabelFrame(parent, text="Preview", padding=10)
-        preview_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        preview_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Preview canvas
-        self.preview_canvas = tk.Canvas(preview_frame, bg='white', height=200)
+        # Preview canvas (expands to fill space)
+        self.preview_canvas = tk.Canvas(
+            preview_frame, 
+            bg='white', 
+            highlightthickness=0
+        )
         self.preview_canvas.pack(fill=tk.BOTH, expand=True)
         
-        # Preview button
-        ttk.Button(preview_frame, text="Generate Preview", 
-                  command=self.generate_preview).pack(pady=5)
+        # Preview button (centered below canvas)
+        btn_frame = ttk.Frame(preview_frame)
+        btn_frame.pack(pady=5)
         
+        ttk.Button(
+            btn_frame, 
+            text="Generate Preview", 
+            command=self.generate_preview
+        ).pack()
+
     def setup_action_buttons(self, parent):
-        # Action buttons frame
         action_frame = ttk.Frame(parent)
         action_frame.pack(fill=tk.X, pady=10)
         
-        ttk.Button(action_frame, text="Apply Watermark to All Images", 
-                  command=self.apply_watermark, style='Accent.TButton').pack(side=tk.LEFT, padx=5)
-        ttk.Button(action_frame, text="Exit", 
-                  command=self.root.quit).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(
+            action_frame, 
+            text="Apply Watermark to All Images", 
+            command=self.apply_watermark, 
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(
+            action_frame, 
+            text="Exit", 
+            command=self.root.quit
+        ).pack(side=tk.RIGHT, padx=5)
         
     def select_images(self):
         filetypes = [
@@ -233,17 +292,42 @@ class WatermarkApp:
             w_width, w_height = watermark_size
         else:
             w_width, w_height = 100, 30  # Default text size estimate
-            
+
+        padding = 30  # Space from edges
+        if watermark_size:
+            padding = 10
+        # Define positions based on selected option
         positions = {
-            "top-left": (10, 10),
-            "top-right": (width - w_width - 10, 10),
-            "bottom-left": (10, height - w_height - 10),
-            "bottom-right": (width - w_width - 10, height - w_height - 10),
-            "center": ((width - w_width) // 2, (height - w_height) // 2)
+            "top-left": (padding, padding),
+            "top-right": (width - w_width - (3*padding), padding),
+            "bottom-left": (padding, height - w_height - padding),
+            "bottom-right": (width - w_width - (3*padding), height - w_height - padding),
+            "center": ((width - w_width) // 2, (height - w_height) // 2),
         }
+        return positions.get(position, (0, 0))
+    
+    def get_logo_position_coordinates(self, image_size, watermark_size=None):
+        width, height = image_size
+        position = self.position_var.get()
         
-        return positions.get(position, (10, 10))
-        
+        if watermark_size:
+            w_width, w_height = watermark_size
+        else:
+            w_width, w_height = 100, 30  # Default text size estimate
+
+        padding = 30  # Space from edges
+        if watermark_size:
+            padding = 10
+        # Define positions based on selected option
+        positions = {
+            "top-left": (padding, padding),
+            "top-right": (width - w_width - (3*padding), padding),
+            "bottom-left": (padding, height - w_height - (3*padding)),
+            "bottom-right": (width - w_width - (3*padding), height - w_height - (3*padding)),
+            "center": ((width - w_width) // 2, (height - w_height) // 2),
+        }
+        return positions.get(position, (0, 0))
+    
     def generate_preview(self):
         if not self.selected_images:
             messagebox.showwarning("Warning", "Please select at least one image first.")
@@ -272,7 +356,7 @@ class WatermarkApp:
                     messagebox.showwarning("Warning", "Please select a logo file.")
                     return
                     
-                position = self.get_position_coordinates(image.size)
+                position = self.get_logo_position_coordinates(image.size)
                 transparency = self.transparency_var.get()
                 
                 watermarked = self.watermarker.add_logo_watermark(
@@ -338,7 +422,7 @@ class WatermarkApp:
                         return
                         
                     image = Image.open(image_path)
-                    position = self.get_position_coordinates(image.size)
+                    position = self.get_logo_position_coordinates(image.size)
                     transparency = self.transparency_var.get()
                     
                     watermarked = self.watermarker.add_logo_watermark(
