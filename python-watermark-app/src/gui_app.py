@@ -72,6 +72,22 @@ class WatermarkApp:
         self.progress = ttk.Progressbar(parent, mode='determinate')
         self.progress.pack(fill=tk.X, pady=10)
 
+    # def setup_image_selection(self, parent):
+    #     img_frame = ttk.LabelFrame(parent, text="Select Images", padding=10)
+    #     img_frame.pack(fill=tk.X, pady=5)
+        
+    #     btn_frame = ttk.Frame(img_frame)
+    #     btn_frame.pack(fill=tk.X)
+        
+    #     ttk.Button(btn_frame, text="Select Images", command=self.select_images).pack(side=tk.LEFT, padx=5)
+    #     ttk.Button(btn_frame, text="Clear Selection", command=self.clear_images).pack(side=tk.LEFT, padx=5)
+        
+    #     self.images_listbox = tk.Listbox(img_frame, height=4)
+    #     self.images_listbox.pack(fill=tk.X, pady=5)
+        
+    #     scrollbar = ttk.Scrollbar(img_frame, orient=tk.VERTICAL, command=self.images_listbox.yview)
+    #     self.images_listbox.configure(yscrollcommand=scrollbar.set)
+
     def setup_image_selection(self, parent):
         img_frame = ttk.LabelFrame(parent, text="Select Images", padding=10)
         img_frame.pack(fill=tk.X, pady=5)
@@ -80,13 +96,38 @@ class WatermarkApp:
         btn_frame.pack(fill=tk.X)
         
         ttk.Button(btn_frame, text="Select Images", command=self.select_images).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text="Clear Selection", command=self.clear_images).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Clear All", command=self.clear_images).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Remove Selected", command=self.remove_selected_images).pack(side=tk.LEFT, padx=5)
         
-        self.images_listbox = tk.Listbox(img_frame, height=4)
+        self.images_listbox = tk.Listbox(img_frame, height=4, selectmode=tk.MULTIPLE)
         self.images_listbox.pack(fill=tk.X, pady=5)
         
         scrollbar = ttk.Scrollbar(img_frame, orient=tk.VERTICAL, command=self.images_listbox.yview)
         self.images_listbox.configure(yscrollcommand=scrollbar.set)
+
+    def remove_selected_images(self):
+        """Remove selected images from the list and update preview"""
+        selected_indices = list(self.images_listbox.curselection())
+        
+        if not selected_indices:
+            messagebox.showwarning("Warning", "No images selected to remove")
+            return
+        
+        # Remove from back to front to avoid index shifting
+        for index in sorted(selected_indices, reverse=True):
+            del self.selected_images[index]
+        
+        self.update_images_listbox()
+        self.generate_all_previews()  # Update the preview display
+
+    def clear_images(self):
+        """Clear all images from the list"""
+        self.selected_images = []
+        self.update_images_listbox()
+        # Clear the preview area
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        self.preview_images = []
 
     def setup_watermark_type(self, parent):
         type_frame = ttk.LabelFrame(parent, text="Watermark Type", padding=10)
@@ -189,26 +230,38 @@ class WatermarkApp:
         self.on_watermark_type_change()
 
     def setup_preview_section(self, parent):
-        preview_frame = ttk.LabelFrame(parent, text="Preview", padding=10)
-        preview_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.preview_frame = ttk.LabelFrame(parent, text="Preview", padding=10)
+        self.preview_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Preview canvas (expands to fill space)
-        self.preview_canvas = tk.Canvas(
-            preview_frame, 
-            bg='white', 
-            highlightthickness=0
+        # Create scrollable canvas
+        self.canvas = tk.Canvas(self.preview_frame, bg='white')
+        self.scrollbar = ttk.Scrollbar(self.preview_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ttk.Frame(self.canvas)
+        
+        # Configure scrolling
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
         )
-        self.preview_canvas.pack(fill=tk.BOTH, expand=True)
         
-        # Preview button (centered below canvas)
-        btn_frame = ttk.Frame(preview_frame)
-        btn_frame.pack(pady=5)
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
         
-        ttk.Button(
-            btn_frame, 
-            text="Generate Preview", 
-            command=self.generate_preview
-        ).pack()
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        # Preview button
+        # self.preview_btn = ttk.Button(
+        #     self.preview_frame,
+        #     text="Generate Preview for All Images",
+        #     command=self.generate_all_previews
+        # )
+        # self.preview_btn.pack(side="bottom", pady=5)
+        
+        # Container for preview images
+        self.preview_images = []
 
     def setup_action_buttons(self, parent):
         action_frame = ttk.Frame(parent)
@@ -218,6 +271,14 @@ class WatermarkApp:
             action_frame, 
             text="Apply Watermark to All Images", 
             command=self.apply_watermark, 
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, padx=5)
+
+        # self.preview_btn = 
+        ttk.Button(
+            action_frame,
+            text="Generate Preview for All Images",
+            command=self.generate_all_previews,
             style='Accent.TButton'
         ).pack(side=tk.LEFT, padx=5)
         
@@ -244,9 +305,9 @@ class WatermarkApp:
             self.selected_images = list(files)
             self.update_images_listbox()
             
-    def clear_images(self):
-        self.selected_images = []
-        self.update_images_listbox()
+    # def clear_images(self):
+    #     self.selected_images = []
+    #     self.update_images_listbox()
         
     def update_images_listbox(self):
         self.images_listbox.delete(0, tk.END)
@@ -328,59 +389,113 @@ class WatermarkApp:
         }
         return positions.get(position, (0, 0))
     
-    def generate_preview(self):
+    # def generate_preview(self):
+    #     if not self.selected_images:
+    #         messagebox.showwarning("Warning", "Please select at least one image first.")
+    #         return
+            
+    #     try:
+    #         # Use the first selected image for preview
+    #         image_path = self.selected_images[0]
+    #         image = Image.open(image_path)
+            
+    #         # Create watermarked preview
+    #         if self.watermark_type.get() == "text":
+    #             text = self.text_entry.get()
+    #             if not text:
+    #                 messagebox.showwarning("Warning", "Please enter watermark text.")
+    #                 return
+                    
+    #             font_size = self.font_size_var.get()
+    #             position = self.get_position_coordinates(image.size)
+                
+    #             watermarked = self.watermarker.add_text_watermark(
+    #                 image_path, text, position, font_size, self.text_color
+    #             )
+    #         else:
+    #             if not self.logo_path:
+    #                 messagebox.showwarning("Warning", "Please select a logo file.")
+    #                 return
+                    
+    #             position = self.get_logo_position_coordinates(image.size)
+    #             transparency = self.transparency_var.get()
+                
+    #             watermarked = self.watermarker.add_logo_watermark(
+    #                 image_path, self.logo_path, position, transparency
+    #             )
+            
+    #         # Resize for preview
+    #         watermarked.thumbnail((400, 300), Image.Resampling.LANCZOS)
+            
+    #         # Convert to PhotoImage for display
+    #         self.preview_image = ImageTk.PhotoImage(watermarked)
+            
+    #         # Clear canvas and display preview
+    #         self.preview_canvas.delete("all")
+    #         canvas_width = self.preview_canvas.winfo_width()
+    #         canvas_height = self.preview_canvas.winfo_height()
+            
+    #         x = (canvas_width - watermarked.width) // 2
+    #         y = (canvas_height - watermarked.height) // 2
+            
+    #         self.preview_canvas.create_image(x, y, anchor=tk.NW, image=self.preview_image)
+            
+    #     except Exception as e:
+    #         messagebox.showerror("Error", f"Failed to generate preview: {str(e)}")
+
+    def generate_all_previews(self):
         if not self.selected_images:
             messagebox.showwarning("Warning", "Please select at least one image first.")
             return
             
         try:
-            # Use the first selected image for preview
-            image_path = self.selected_images[0]
-            image = Image.open(image_path)
-            
-            # Create watermarked preview
-            if self.watermark_type.get() == "text":
-                text = self.text_entry.get()
-                if not text:
-                    messagebox.showwarning("Warning", "Please enter watermark text.")
-                    return
-                    
-                font_size = self.font_size_var.get()
-                position = self.get_position_coordinates(image.size)
+            # Clear previous previews
+            for widget in self.scrollable_frame.winfo_children():
+                widget.destroy()
                 
-                watermarked = self.watermarker.add_text_watermark(
-                    image_path, text, position, font_size, self.text_color
-                )
-            else:
-                if not self.logo_path:
-                    messagebox.showwarning("Warning", "Please select a logo file.")
-                    return
-                    
-                position = self.get_logo_position_coordinates(image.size)
-                transparency = self.transparency_var.get()
+            self.preview_images = []
+            
+            for image_path in self.selected_images:
+                image = Image.open(image_path)
                 
-                watermarked = self.watermarker.add_logo_watermark(
-                    image_path, self.logo_path, position, transparency
-                )
-            
-            # Resize for preview
-            watermarked.thumbnail((400, 300), Image.Resampling.LANCZOS)
-            
-            # Convert to PhotoImage for display
-            self.preview_image = ImageTk.PhotoImage(watermarked)
-            
-            # Clear canvas and display preview
-            self.preview_canvas.delete("all")
-            canvas_width = self.preview_canvas.winfo_width()
-            canvas_height = self.preview_canvas.winfo_height()
-            
-            x = (canvas_width - watermarked.width) // 2
-            y = (canvas_height - watermarked.height) // 2
-            
-            self.preview_canvas.create_image(x, y, anchor=tk.NW, image=self.preview_image)
-            
+                # Generate watermarked preview
+                if self.watermark_type.get() == "text":
+                    text = self.text_entry.get()
+                    if not text:
+                        messagebox.showwarning("Warning", "Please enter watermark text.")
+                        return
+                        
+                    font_size = self.font_size_var.get()
+                    position = self.get_position_coordinates(image.size)
+                    
+                    watermarked = self.watermarker.add_text_watermark(
+                        image_path, text, position, font_size, self.text_color
+                    )
+                else:
+                    if not self.logo_path:
+                        messagebox.showwarning("Warning", "Please select a logo file.")
+                        return
+                        
+                    position = self.get_logo_position_coordinates(image.size)
+                    transparency = self.transparency_var.get()
+                    
+                    watermarked = self.watermarker.add_logo_watermark(
+                        image_path, self.logo_path, position, transparency
+                    )
+                
+                # Resize for preview
+                watermarked.thumbnail((400, 300), Image.Resampling.LANCZOS)
+                
+                # Convert to PhotoImage for display
+                preview_image = ImageTk.PhotoImage(watermarked)
+                self.preview_images.append(preview_image)
+                
+                # Create label to display the preview
+                label = ttk.Label(self.scrollable_frame, image=preview_image)
+                label.pack(padx=5, pady=5)
+                
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate preview: {str(e)}")
+            messagebox.showerror("Error", f"Failed to generate previews: {str(e)}")
             
     def apply_watermark(self):
         if not self.selected_images:
